@@ -24,6 +24,7 @@ export const env = {
   GOOGLE_CLIENT_ID: required("GOOGLE_CLIENT_ID"),
   GOOGLE_CLIENT_SECRET: required("GOOGLE_CLIENT_SECRET"),
   GOOGLE_REFRESH_TOKEN: required("GOOGLE_REFRESH_TOKEN"),
+  PASSWORD: required("PASSWORD"),
 
   // ✅ CORS via env (lista)
   CORS_ORIGINS: parseOrigins(process.env.CORS_ORIGINS),

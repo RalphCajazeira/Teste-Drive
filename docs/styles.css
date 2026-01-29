@@ -51,6 +51,22 @@ h2 {
   flex-wrap: wrap;
   margin-top: 12px;
 }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+input[type="password"],
+input[type="text"],
+input[type="file"] {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0f0f12;
+  color: var(--text);
+}
 button {
   padding: 10px 14px;
   border-radius: 10px;
@@ -65,6 +81,15 @@ button:hover {
 button.secondary {
   background: #2a2a33;
   border: 1px solid var(--border);
+}
+.danger {
+  background: #5c1f28;
+  border: 1px solid #7a2a36;
+}
+.small-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
 }
 .header-row {
   display: flex;
@@ -110,6 +135,11 @@ button.secondary {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
 }
 a {
   color: var(--link);

@@ -21,11 +21,14 @@ app.use(
       return callback(new Error(`CORS bloqueado para: ${origin}`))
     },
     credentials: false,
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-password"],
   }),
 )
 
 app.set("port", env.PORT)
+
+app.use(express.json())
 
 // estáticos
 const frontendPath = path.resolve(process.cwd(), "docs")

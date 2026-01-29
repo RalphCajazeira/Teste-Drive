@@ -22,6 +22,17 @@
           <button type="submit">Enviar</button>
         </form>
 
+        <div class="row">
+          <label class="field">
+            <span>Senha do backend</span>
+            <input
+              id="password"
+              type="password"
+              placeholder="Digite a senha"
+            />
+          </label>
+        </div>
+
         <div id="status" class="status" aria-live="polite"></div>
       </section>
 
@@ -53,6 +64,36 @@
       const statusEl = document.getElementById("status")
       const uploadForm = document.getElementById("uploadForm")
       const fileInput = document.getElementById("file")
+      const passwordInput = document.getElementById("password")
+
+      let PASSWORD = ""
+
+      function getPassword() {
+        return PASSWORD
+      }
+
+      function setPassword(value) {
+        PASSWORD = value || ""
+      }
+
+      passwordInput.addEventListener("input", (event) => {
+        setPassword(event.target.value)
+      })
+
+      function withPasswordHeaders(options = {}) {
+        const headers = new Headers(options.headers || {})
+        headers.set("x-password", getPassword())
+        return { ...options, headers }
+      }
+
+      function ensurePassword() {
+        if (!getPassword()) {
+          statusEl.textContent =
+            "Informe a senha do backend para continuar."
+          return false
+        }
+        return true
+      }
 
       async function loadImages() {
         statusEl.textContent = ""
@@ -60,9 +101,13 @@
         count.textContent = "Carregando..."
 
         try {
-          const res = await fetch(`${API_BASE}/api/images`, {
-            cache: "no-store",
-          })
+          if (!ensurePassword()) return
+
+          const res = await fetch(
+            `${API_BASE}/api/images`,
+            withPasswordHeaders({ cache: "no-store" }),
+          )
+          if (!res.ok) throw new Error("Falha ao listar imagens")
           const data = await res.json()
 
           const images = data.images || []
@@ -73,7 +118,9 @@
             card.className = "imgcard"
 
             const imageEl = document.createElement("img")
-            imageEl.src = `${API_BASE}/img/${img.id}` // ✅ aponta pro backend
+            imageEl.src = `${API_BASE}/img/${img.id}?password=${encodeURIComponent(
+              getPassword(),
+            )}` // ✅ aponta pro backend
             imageEl.alt = img.name
 
             const meta = document.createElement("div")
@@ -91,8 +138,71 @@
               <span class="small">id: ${img.id}</span>
             `
 
+            const actions = document.createElement("div")
+            actions.className = "actions"
+
+            const renameBtn = document.createElement("button")
+            renameBtn.type = "button"
+            renameBtn.className = "secondary small-btn"
+            renameBtn.textContent = "Renomear"
+            renameBtn.addEventListener("click", async () => {
+              if (!ensurePassword()) return
+
+              const newName = prompt("Novo nome da imagem:", img.name)
+              if (!newName || !newName.trim()) return
+
+              try {
+                const res = await fetch(
+                  `${API_BASE}/api/images/${img.id}`,
+                  withPasswordHeaders({
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: newName.trim() }),
+                  }),
+                )
+
+                if (!res.ok) throw new Error("Falha ao renomear")
+                statusEl.textContent = "Imagem renomeada com sucesso."
+                await loadImages()
+              } catch (e) {
+                console.error(e)
+                statusEl.textContent = "Erro ao renomear imagem."
+              }
+            })
+
+            const deleteBtn = document.createElement("button")
+            deleteBtn.type = "button"
+            deleteBtn.className = "danger small-btn"
+            deleteBtn.textContent = "Apagar"
+            deleteBtn.addEventListener("click", async () => {
+              if (!ensurePassword()) return
+
+              const confirmDelete = confirm(
+                `Tem certeza que deseja apagar "${img.name}"?`,
+              )
+              if (!confirmDelete) return
+
+              try {
+                const res = await fetch(
+                  `${API_BASE}/api/images/${img.id}`,
+                  withPasswordHeaders({ method: "DELETE" }),
+                )
+
+                if (!res.ok) throw new Error("Falha ao apagar")
+                statusEl.textContent = "Imagem apagada."
+                await loadImages()
+              } catch (e) {
+                console.error(e)
+                statusEl.textContent = "Erro ao apagar imagem."
+              }
+            })
+
+            actions.appendChild(renameBtn)
+            actions.appendChild(deleteBtn)
+
             meta.appendChild(title)
             meta.appendChild(links)
+            meta.appendChild(actions)
             card.appendChild(imageEl)
             card.appendChild(meta)
             grid.appendChild(card)
@@ -111,15 +221,19 @@
 
         const file = fileInput.files?.[0]
         if (!file) return
+        if (!ensurePassword()) return
 
         const formData = new FormData()
         formData.append("image", file)
 
         try {
-          const res = await fetch(`${API_BASE}/upload`, {
-            method: "POST",
-            body: formData,
-          })
+          const res = await fetch(
+            `${API_BASE}/upload`,
+            withPasswordHeaders({
+              method: "POST",
+              body: formData,
+            }),
+          )
 
           if (!res.ok) throw new Error("Upload falhou")
           fileInput.value = ""
