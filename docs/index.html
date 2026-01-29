@@ -29,12 +29,12 @@
       <div id="loginPanel" class="login-panel" hidden>
         <form id="loginForm" class="row login-form">
           <label class="field">
-            <span>Senha do backend</span>
             <input
               id="password"
               type="password"
               placeholder="Digite a senha"
               autocomplete="current-password"
+              aria-label="Senha"
             />
           </label>
           <button type="submit" class="secondary">Entrar</button>
@@ -145,6 +145,42 @@
       </div>
     </div>
 
+    <div id="editModal" class="modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div
+        class="modal-content modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Editar informações da imagem"
+      >
+        <h3>Editar informações</h3>
+        <form id="editForm" class="modal-form">
+          <label class="field">
+            <span>Nome do Produto</span>
+            <input id="editName" type="text" required />
+          </label>
+          <label class="field">
+            <span>Tipo</span>
+            <input id="editType" type="text" />
+          </label>
+          <label class="field">
+            <span>Material</span>
+            <input id="editMaterial" type="text" />
+          </label>
+          <label class="field">
+            <span>Ambientes (separados por vírgula)</span>
+            <input id="editAmbientes" type="text" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="secondary" id="editCancel">
+              Cancelar
+            </button>
+            <button type="submit">Confirmar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script>
       // ✅ Troque aqui dependendo do ambiente:
       // Local: "http://localhost:3000"
@@ -171,11 +207,20 @@
       const modalClose = imageModal.querySelector(".modal-close")
       const modalPrev = imageModal.querySelector(".modal-nav.prev")
       const modalNext = imageModal.querySelector(".modal-nav.next")
+      const editModal = document.getElementById("editModal")
+      const editForm = document.getElementById("editForm")
+      const editName = document.getElementById("editName")
+      const editType = document.getElementById("editType")
+      const editMaterial = document.getElementById("editMaterial")
+      const editAmbientes = document.getElementById("editAmbientes")
+      const editCancel = document.getElementById("editCancel")
       let PASSWORD = ""
       let isAuthenticated = false
       const DEFAULT_DB_URL = new URL("db.json", window.location.href).toString()
       let currentImages = []
       let currentIndex = -1
+      let currentEdit = null
+      let currentEditValues = null
       const imageObjectUrls = new Set()
 
       function getPassword() {
@@ -218,7 +263,7 @@
             withPasswordHeaders({ cache: "no-store" }),
           )
           if (!res.ok) throw new Error("Senha inválida")
-          loginStatus.textContent = "Login liberado."
+          loginStatus.textContent = ""
           setAuthenticated(true)
           await loadImages()
           return true
@@ -287,41 +332,8 @@
               editBtn.type = "button"
               editBtn.className = "secondary small-btn"
               editBtn.textContent = "Editar"
-              editBtn.addEventListener("click", async () => {
-                const newName = prompt(
-                  "Nome do produto:",
-                  img.name || img.originalName || "",
-                )
-                if (!newName || !newName.trim()) return
-                const newType = prompt("Tipo:", img.type || "")
-                const newMaterial = prompt("Material:", img.material || "")
-                const newAmbientes = prompt(
-                  "Ambientes (separados por vírgula):",
-                  Array.isArray(img.ambientes) ? img.ambientes.join(", ") : "",
-                )
-
-                try {
-                  const res = await fetch(
-                    `${API_BASE}/api/images/${img.id}`,
-                    withPasswordHeaders({
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        name: newName.trim(),
-                        type: newType || "",
-                        material: newMaterial || "",
-                        ambientes: newAmbientes || "",
-                      }),
-                    }),
-                  )
-
-                  if (!res.ok) throw new Error("Falha ao atualizar")
-                  statusEl.textContent = "Imagem atualizada com sucesso."
-                  await loadImages()
-                } catch (e) {
-                  console.error(e)
-                  statusEl.textContent = "Erro ao atualizar imagem."
-                }
+              editBtn.addEventListener("click", () => {
+                openEditModal(img)
               })
 
               const deleteBtn = document.createElement("button")
@@ -482,6 +494,33 @@
         currentIndex = -1
       }
 
+      function closeEditModal() {
+        editModal.setAttribute("hidden", "hidden")
+        document.body.classList.remove("modal-open")
+        currentEdit = null
+        currentEditValues = null
+      }
+
+      function openEditModal(img) {
+        currentEdit = img
+        const ambientesValue = Array.isArray(img.ambientes)
+          ? img.ambientes.join(", ")
+          : img.ambientes || ""
+        currentEditValues = {
+          name: img.name || img.originalName || "",
+          type: img.type || "",
+          material: img.material || "",
+          ambientes: ambientesValue,
+        }
+        editName.value = currentEditValues.name
+        editType.value = currentEditValues.type
+        editMaterial.value = currentEditValues.material
+        editAmbientes.value = currentEditValues.ambientes
+        editModal.removeAttribute("hidden")
+        document.body.classList.add("modal-open")
+        editName.focus()
+      }
+
       function stepModal(direction) {
         if (!currentImages.length) return
         const total = currentImages.length
@@ -540,14 +579,65 @@
         .addEventListener("click", closeModal)
       modalPrev.addEventListener("click", () => stepModal(-1))
       modalNext.addEventListener("click", () => stepModal(1))
+      editCancel.addEventListener("click", closeEditModal)
+      editModal
+        .querySelector(".modal-backdrop")
+        .addEventListener("click", closeEditModal)
+
+      editForm.addEventListener("submit", async (event) => {
+        event.preventDefault()
+        if (!currentEdit || !currentEditValues) return
+
+        const updatedValues = {
+          name: editName.value.trim(),
+          type: editType.value.trim(),
+          material: editMaterial.value.trim(),
+          ambientes: editAmbientes.value.trim(),
+        }
+
+        if (!updatedValues.name) return
+
+        const hasChanges = Object.keys(updatedValues).some(
+          (key) => updatedValues[key] !== currentEditValues[key],
+        )
+
+        if (!hasChanges) {
+          closeEditModal()
+          return
+        }
+
+        try {
+          const res = await fetch(
+            `${API_BASE}/api/images/${currentEdit.id}`,
+            withPasswordHeaders({
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(updatedValues),
+            }),
+          )
+
+          if (!res.ok) throw new Error("Falha ao atualizar")
+          statusEl.textContent = "Imagem atualizada com sucesso."
+          closeEditModal()
+          await loadImages()
+        } catch (error) {
+          console.error(error)
+          statusEl.textContent = "Erro ao atualizar imagem."
+        }
+      })
 
       document.addEventListener("keydown", (event) => {
-        if (imageModal.hasAttribute("hidden")) return
+        if (imageModal.hasAttribute("hidden") && editModal.hasAttribute("hidden"))
+          return
         if (event.key === "Escape") {
+          if (!editModal.hasAttribute("hidden")) {
+            closeEditModal()
+            return
+          }
           closeModal()
-        } else if (event.key === "ArrowRight") {
+        } else if (!imageModal.hasAttribute("hidden") && event.key === "ArrowRight") {
           stepModal(1)
-        } else if (event.key === "ArrowLeft") {
+        } else if (!imageModal.hasAttribute("hidden") && event.key === "ArrowLeft") {
           stepModal(-1)
         }
       })
