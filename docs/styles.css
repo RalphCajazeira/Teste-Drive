@@ -105,6 +105,7 @@ input[type="file"] {
   border: 1px solid var(--border);
   background: #0f0f12;
   color: var(--text);
+  min-width: 220px;
 }
 button {
   padding: 10px 14px;
@@ -168,6 +169,12 @@ button.secondary {
   font-weight: 700;
   margin-bottom: 6px;
   word-break: break-word;
+}
+.details {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+  color: #d7d7df;
 }
 .links {
   display: flex;
