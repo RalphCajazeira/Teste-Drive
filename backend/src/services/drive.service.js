@@ -28,9 +28,12 @@ export async function makePublic(fileId) {
   } catch {}
 }
 
-export async function uploadImage(file) {
+export async function uploadImage(file, fileName) {
   const created = await drive.files.create({
-    requestBody: { name: file.originalname, parents: [env.DRIVE_FOLDER_ID] },
+    requestBody: {
+      name: fileName || file.originalname,
+      parents: [env.DRIVE_FOLDER_ID],
+    },
     media: { mimeType: file.mimetype, body: fs.createReadStream(file.path) },
     fields: "id,name",
   })
@@ -71,4 +74,8 @@ export async function deleteImage(fileId) {
     fileId,
     supportsAllDrives: true,
   })
+}
+
+export function getPublicImageUrl(fileId) {
+  return `https://drive.google.com/uc?export=view&id=${fileId}`
 }

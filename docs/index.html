@@ -50,6 +50,38 @@
         </p>
 
         <form class="row" id="uploadForm" enctype="multipart/form-data">
+          <label class="field">
+            <span>Nome do Produto</span>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              placeholder="Nome do Produto"
+              required
+            />
+          </label>
+          <label class="field">
+            <span>Tipo</span>
+            <input id="type" name="type" type="text" placeholder="Tipo" />
+          </label>
+          <label class="field">
+            <span>Material</span>
+            <input
+              id="material"
+              name="material"
+              type="text"
+              placeholder="Material"
+            />
+          </label>
+          <label class="field">
+            <span>Ambientes (separados por vírgula)</span>
+            <input
+              id="ambientes"
+              name="ambientes"
+              type="text"
+              placeholder="Ambientes (separados por vírgula)"
+            />
+          </label>
           <input id="file" type="file" name="image" accept="image/*" required />
           <button type="submit">Enviar</button>
         </form>
@@ -64,6 +96,26 @@
         </div>
         <p class="hint" id="count">Carregando...</p>
         <div id="status" class="status" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <div class="header-row">
+          <h2>Fonte do catálogo (db.json)</h2>
+          <button id="saveDbUrl" type="button" class="secondary">
+            Salvar URL
+          </button>
+        </div>
+        <p class="hint">
+          Cole a URL pública do db.json no Drive para carregar mesmo sem
+          backend.
+        </p>
+        <div class="row">
+          <input
+            id="dbUrl"
+            type="text"
+            placeholder="https://drive.google.com/uc?export=download&id=SEU_ID"
+          />
+        </div>
       </section>
 
       <section class="grid" id="grid"></section>
@@ -90,9 +142,16 @@
       const loginForm = document.getElementById("loginForm")
       const loginStatus = document.getElementById("loginStatus")
       const adminCard = document.getElementById("adminCard")
+      const dbUrlInput = document.getElementById("dbUrl")
+      const saveDbUrlBtn = document.getElementById("saveDbUrl")
 
       let PASSWORD = ""
       let isAuthenticated = false
+      let DRIVE_DB_URL = localStorage.getItem("driveDbUrl") || ""
+
+      if (dbUrlInput && DRIVE_DB_URL) {
+        dbUrlInput.value = DRIVE_DB_URL
+      }
 
       function getPassword() {
         return PASSWORD
@@ -152,13 +211,7 @@
         count.textContent = "Carregando..."
 
         try {
-          const res = await fetch(
-            `${API_BASE}/api/images`,
-            { cache: "no-store" },
-          )
-          if (!res.ok) throw new Error("Falha ao listar imagens")
-          const data = await res.json()
-
+          const data = await fetchCatalog()
           const images = data.images || []
           count.textContent = `Mostrando ${images.length} imagem(ns).`
 
@@ -167,38 +220,62 @@
             card.className = "imgcard"
 
             const imageEl = document.createElement("img")
-            const passwordParam = getPassword()
-              ? `?password=${encodeURIComponent(getPassword())}`
-              : ""
-            imageEl.src = `${API_BASE}/img/${img.id}${passwordParam}` // ✅ aponta pro backend
-            imageEl.alt = img.name
+            imageEl.src = resolveImageUrl(img)
+            imageEl.alt = img.name || img.originalName || "Imagem do catálogo"
 
             const meta = document.createElement("div")
             meta.className = "meta"
 
             const title = document.createElement("div")
             title.className = "name"
-            title.textContent = img.name
+            title.textContent = img.name || img.originalName || "Sem nome"
+
+            const details = document.createElement("div")
+            details.className = "details"
+            details.innerHTML = `
+              ${img.type ? `<div><strong>Tipo:</strong> ${img.type}</div>` : ""}
+              ${
+                img.material
+                  ? `<div><strong>Material:</strong> ${img.material}</div>`
+                  : ""
+              }
+              ${
+                img.ambientes && img.ambientes.length
+                  ? `<div><strong>Ambientes:</strong> ${img.ambientes.join(", ")}</div>`
+                  : ""
+              }
+            `
 
             const links = document.createElement("div")
             links.className = "links"
-            links.innerHTML = `
-              <a href="${img.driveView}" target="_blank" rel="noreferrer">Abrir no Drive</a>
-              <span class="sep">•</span>
-              <span class="small">id: ${img.id}</span>
-            `
+            links.innerHTML = img.driveView
+              ? `
+                <a href="${img.driveView}" target="_blank" rel="noreferrer">Abrir no Drive</a>
+                <span class="sep">•</span>
+                <span class="small">id: ${img.id}</span>
+              `
+              : `<span class="small">id: ${img.id}</span>`
 
             const actions = document.createElement("div")
             actions.className = "actions"
 
             if (isAuthenticated) {
-              const renameBtn = document.createElement("button")
-              renameBtn.type = "button"
-              renameBtn.className = "secondary small-btn"
-              renameBtn.textContent = "Renomear"
-              renameBtn.addEventListener("click", async () => {
-                const newName = prompt("Novo nome da imagem:", img.name)
+              const editBtn = document.createElement("button")
+              editBtn.type = "button"
+              editBtn.className = "secondary small-btn"
+              editBtn.textContent = "Editar"
+              editBtn.addEventListener("click", async () => {
+                const newName = prompt(
+                  "Nome do produto:",
+                  img.name || img.originalName || "",
+                )
                 if (!newName || !newName.trim()) return
+                const newType = prompt("Tipo:", img.type || "")
+                const newMaterial = prompt("Material:", img.material || "")
+                const newAmbientes = prompt(
+                  "Ambientes (separados por vírgula):",
+                  Array.isArray(img.ambientes) ? img.ambientes.join(", ") : "",
+                )
 
                 try {
                   const res = await fetch(
@@ -206,16 +283,21 @@
                     withPasswordHeaders({
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ name: newName.trim() }),
+                      body: JSON.stringify({
+                        name: newName.trim(),
+                        type: newType || "",
+                        material: newMaterial || "",
+                        ambientes: newAmbientes || "",
+                      }),
                     }),
                   )
 
-                  if (!res.ok) throw new Error("Falha ao renomear")
-                  statusEl.textContent = "Imagem renomeada com sucesso."
+                  if (!res.ok) throw new Error("Falha ao atualizar")
+                  statusEl.textContent = "Imagem atualizada com sucesso."
                   await loadImages()
                 } catch (e) {
                   console.error(e)
-                  statusEl.textContent = "Erro ao renomear imagem."
+                  statusEl.textContent = "Erro ao atualizar imagem."
                 }
               })
 
@@ -244,11 +326,12 @@
                 }
               })
 
-              actions.appendChild(renameBtn)
+              actions.appendChild(editBtn)
               actions.appendChild(deleteBtn)
             }
 
             meta.appendChild(title)
+            meta.appendChild(details)
             meta.appendChild(links)
             if (isAuthenticated) {
               meta.appendChild(actions)
@@ -271,9 +354,7 @@
 
         const file = fileInput.files?.[0]
         if (!file) return
-
-        const formData = new FormData()
-        formData.append("image", file)
+        const formData = new FormData(uploadForm)
 
         try {
           const res = await fetch(
@@ -285,7 +366,7 @@
           )
 
           if (!res.ok) throw new Error("Upload falhou")
-          fileInput.value = ""
+          uploadForm.reset()
           statusEl.textContent = "Upload enviado! Recarregando..."
           await loadImages()
         } catch (e) {
@@ -310,6 +391,62 @@
       })
 
       refreshBtn.addEventListener("click", loadImages)
+      saveDbUrlBtn.addEventListener("click", () => {
+        const value = dbUrlInput.value.trim()
+        DRIVE_DB_URL = value
+        if (value) {
+          localStorage.setItem("driveDbUrl", value)
+          statusEl.textContent = "URL do db.json salva."
+        } else {
+          localStorage.removeItem("driveDbUrl")
+          statusEl.textContent = "URL do db.json removida."
+        }
+      })
+
+      function resolveImageUrl(img) {
+        if (img.imageUrl) return img.imageUrl
+        if (img.id) return `${API_BASE}/img/${img.id}`
+        return ""
+      }
+
+      async function fetchCatalog() {
+        const sources = []
+        if (DRIVE_DB_URL) {
+          sources.push({ type: "drive", url: DRIVE_DB_URL })
+        }
+        sources.push({ type: "api", url: `${API_BASE}/api/images` })
+
+        for (const source of sources) {
+          try {
+            const res = await fetch(source.url, { cache: "no-store" })
+            if (!res.ok) throw new Error("Falha ao carregar catálogo")
+            const data = await res.json()
+
+            if (source.type === "api" && data.dbUrl && !DRIVE_DB_URL) {
+              DRIVE_DB_URL = data.dbUrl
+              localStorage.setItem("driveDbUrl", data.dbUrl)
+              if (dbUrlInput) dbUrlInput.value = data.dbUrl
+            }
+
+            return normalizeCatalogData(data)
+          } catch (error) {
+            console.warn(`Falha ao carregar via ${source.type}:`, error)
+          }
+        }
+
+        throw new Error("Nenhuma fonte de catálogo respondeu.")
+      }
+
+      function normalizeCatalogData(data) {
+        if (Array.isArray(data?.items)) {
+          return { images: data.items }
+        }
+        if (Array.isArray(data?.images)) {
+          return { images: data.images }
+        }
+        return { images: [] }
+      }
+
       loadImages()
     </script>
   </body>
