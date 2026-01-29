@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Catálogo - Upload Drive</title>
-    <link rel="stylesheet" href="/styles.css" />
+
+    <!-- ✅ caminho relativo -->
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="container">
@@ -15,12 +17,7 @@
           pública.
         </p>
 
-        <form
-          class="row"
-          action="/upload"
-          method="post"
-          enctype="multipart/form-data"
-        >
+        <form class="row" id="uploadForm" enctype="multipart/form-data">
           <input id="file" type="file" name="image" accept="image/*" required />
           <button type="submit">Enviar</button>
         </form>
@@ -42,10 +39,17 @@
     </main>
 
     <script>
+      // ✅ Troque aqui dependendo do ambiente:
+      // Local: "http://localhost:3000"
+      // Produção: "https://seu-backend.com"
+      const API_BASE = "http://localhost:3000"
+
       const grid = document.getElementById("grid")
       const count = document.getElementById("count")
       const refreshBtn = document.getElementById("refresh")
       const statusEl = document.getElementById("status")
+      const uploadForm = document.getElementById("uploadForm")
+      const fileInput = document.getElementById("file")
 
       async function loadImages() {
         statusEl.textContent = ""
@@ -53,7 +57,9 @@
         count.textContent = "Carregando..."
 
         try {
-          const res = await fetch("/api/images", { cache: "no-store" })
+          const res = await fetch(`${API_BASE}/api/images`, {
+            cache: "no-store",
+          })
           const data = await res.json()
 
           const images = data.images || []
@@ -63,9 +69,8 @@
             const card = document.createElement("div")
             card.className = "imgcard"
 
-            // O segredo: <img> aponta para o backend, que faz proxy do Drive
             const imageEl = document.createElement("img")
-            imageEl.src = `/img/${img.id}`
+            imageEl.src = `${API_BASE}/img/${img.id}` // ✅ aponta pro backend
             imageEl.alt = img.name
 
             const meta = document.createElement("div")
@@ -78,26 +83,51 @@
             const links = document.createElement("div")
             links.className = "links"
             links.innerHTML = `
-            <a href="${img.driveView}" target="_blank" rel="noreferrer">Abrir no Drive</a>
-            <span class="sep">•</span>
-            <span class="small">fileId: ${img.id}</span>
-          `
+              <a href="${img.driveView}" target="_blank" rel="noreferrer">Abrir no Drive</a>
+              <span class="sep">•</span>
+              <span class="small">id: ${img.id}</span>
+            `
 
             meta.appendChild(title)
             meta.appendChild(links)
-
             card.appendChild(imageEl)
             card.appendChild(meta)
-
             grid.appendChild(card)
           }
         } catch (e) {
           console.error(e)
           count.textContent = "Erro ao carregar imagens."
           statusEl.textContent =
-            "Falha ao listar imagens do Drive. Veja o console."
+            "Falha ao listar imagens. Verifique a URL do backend."
         }
       }
+
+      uploadForm.addEventListener("submit", async (ev) => {
+        ev.preventDefault()
+        statusEl.textContent = ""
+
+        const file = fileInput.files?.[0]
+        if (!file) return
+
+        const formData = new FormData()
+        formData.append("image", file)
+
+        try {
+          const res = await fetch(`${API_BASE}/upload`, {
+            method: "POST",
+            body: formData,
+          })
+
+          if (!res.ok) throw new Error("Upload falhou")
+          fileInput.value = ""
+          statusEl.textContent = "Upload enviado! Recarregando..."
+          await loadImages()
+        } catch (e) {
+          console.error(e)
+          statusEl.textContent =
+            "Erro no upload. Verifique se o backend está rodando e com CORS liberado."
+        }
+      })
 
       refreshBtn.addEventListener("click", loadImages)
       loadImages()
