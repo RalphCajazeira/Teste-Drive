@@ -3,5 +3,3 @@ tmp/
 .env
 refresh-token.json
 *.log
-
-/src/generated/prisma
