@@ -28,6 +28,45 @@ body {
   margin: 24px auto;
   padding: 0 16px;
 }
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+.icon-btn.is-auth {
+  color: #7ddc9d;
+  border-color: #2a5c3c;
+}
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.login-form {
+  justify-content: flex-end;
+}
+.login-status {
+  margin: 0;
+}
 .card {
   background: var(--card);
   border: 1px solid var(--border);

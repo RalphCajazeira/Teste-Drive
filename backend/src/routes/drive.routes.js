@@ -11,9 +11,11 @@ import {
 
 export const driveRoutes = Router()
 
-driveRoutes.use(requirePassword)
 driveRoutes.get("/api/images", apiListImages)
 driveRoutes.get("/img/:id", getImageProxy)
-driveRoutes.post("/upload", upload.single("image"), postUpload)
-driveRoutes.put("/api/images/:id", putRenameImage)
-driveRoutes.delete("/api/images/:id", deleteImageById)
+driveRoutes.get("/api/auth", requirePassword, (_req, res) =>
+  res.json({ ok: true }),
+)
+driveRoutes.post("/upload", requirePassword, upload.single("image"), postUpload)
+driveRoutes.put("/api/images/:id", requirePassword, putRenameImage)
+driveRoutes.delete("/api/images/:id", requirePassword, deleteImageById)
