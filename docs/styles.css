@@ -216,6 +216,10 @@ a:hover {
   z-index: 999;
 }
 
+.modal[hidden] {
+  display: none;
+}
+
 .modal-backdrop {
   position: absolute;
   inset: 0;
@@ -230,7 +234,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 64px 72px;
 }
 
 .modal-content img {
@@ -244,8 +248,8 @@ a:hover {
 
 .modal-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 16px;
+  right: 16px;
   background: rgba(15, 15, 18, 0.8);
 }
 
@@ -257,11 +261,11 @@ a:hover {
 }
 
 .modal-nav.prev {
-  left: 12px;
+  left: 16px;
 }
 
 .modal-nav.next {
-  right: 12px;
+  right: 16px;
 }
 
 .modal-nav:disabled {

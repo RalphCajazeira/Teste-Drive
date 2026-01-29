@@ -176,6 +176,7 @@
       const DEFAULT_DB_URL = new URL("db.json", window.location.href).toString()
       let currentImages = []
       let currentIndex = -1
+      const imageObjectUrls = new Set()
 
       function getPassword() {
         return PASSWORD
@@ -231,6 +232,8 @@
 
       async function loadImages() {
         statusEl.textContent = ""
+        closeModal()
+        revokeObjectUrls()
         grid.innerHTML = ""
         count.textContent = "Carregando..."
 
@@ -245,7 +248,11 @@
             card.className = "imgcard"
 
             const imageEl = document.createElement("img")
-            imageEl.src = resolveImageUrl(img)
+            imageEl.loading = "lazy"
+            imageEl.decoding = "async"
+            const imageUrl = resolveImageUrl(img)
+            imageEl.dataset.src = imageUrl
+            void loadImageWithCache(imageEl, imageUrl)
             imageEl.alt = img.name || img.originalName || "Imagem do catálogo"
             imageEl.addEventListener("click", () => openModal(index))
 
@@ -451,10 +458,12 @@
         modalNext.setAttribute("aria-disabled", String(!hasMultiple))
       }
 
-      function updateModalImage() {
+      async function updateModalImage() {
         const img = currentImages[currentIndex]
         if (!img) return
-        modalImage.src = resolveImageUrl(img)
+        const imageUrl = resolveImageUrl(img)
+        modalImage.dataset.src = imageUrl
+        await loadImageWithCache(modalImage, imageUrl)
         modalImage.alt = img.name || img.originalName || "Imagem do catálogo"
       }
 
@@ -462,7 +471,7 @@
         if (!currentImages.length) return
         currentIndex = index
         updateModalNavigation()
-        updateModalImage()
+        void updateModalImage()
         imageModal.removeAttribute("hidden")
         document.body.classList.add("modal-open")
       }
@@ -477,7 +486,52 @@
         if (!currentImages.length) return
         const total = currentImages.length
         currentIndex = (currentIndex + direction + total) % total
-        updateModalImage()
+        void updateModalImage()
+      }
+
+      function revokeObjectUrls() {
+        for (const url of imageObjectUrls) {
+          URL.revokeObjectURL(url)
+        }
+        imageObjectUrls.clear()
+      }
+
+      function setImageSource(imageEl, src) {
+        const previousUrl = imageEl.dataset.objectUrl
+        if (previousUrl && previousUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(previousUrl)
+          imageObjectUrls.delete(previousUrl)
+        }
+        imageEl.src = src
+        if (src.startsWith("blob:")) {
+          imageEl.dataset.objectUrl = src
+          imageObjectUrls.add(src)
+        } else {
+          imageEl.removeAttribute("data-object-url")
+        }
+      }
+
+      async function getCachedImageUrl(url) {
+        if (!url) return ""
+        if (!("caches" in window)) return url
+        const cache = await caches.open("catalog-images-v1")
+        const cached = await cache.match(url)
+        if (cached) {
+          return URL.createObjectURL(await cached.blob())
+        }
+        const response = await fetch(url, { cache: "force-cache" })
+        if (response.ok) {
+          await cache.put(url, response.clone())
+          return URL.createObjectURL(await response.blob())
+        }
+        return url
+      }
+
+      async function loadImageWithCache(imageEl, url) {
+        if (!url) return
+        const cachedUrl = await getCachedImageUrl(url)
+        if (imageEl.dataset.src !== url) return
+        setImageSource(imageEl, cachedUrl)
       }
 
       modalClose.addEventListener("click", closeModal)
