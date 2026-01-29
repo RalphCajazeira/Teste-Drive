@@ -7,7 +7,23 @@ import { driveRoutes } from "./routes/drive.routes.js"
 export const app = express()
 
 import cors from "cors"
-app.use(cors({ origin: "*" }))
+
+const allowedOrigins = env.CORS_ORIGINS
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // requests sem Origin (Postman/curl/healthcheck) -> libera
+      if (!origin) return callback(null, true)
+
+      if (allowedOrigins.includes(origin)) return callback(null, true)
+
+      return callback(new Error(`CORS bloqueado para: ${origin}`))
+    },
+    credentials: false,
+    methods: ["GET", "POST", "OPTIONS"],
+  }),
+)
 
 app.set("port", env.PORT)
 

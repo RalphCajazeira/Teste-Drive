@@ -42,7 +42,10 @@
       // ✅ Troque aqui dependendo do ambiente:
       // Local: "http://localhost:3000"
       // Produção: "https://seu-backend.com"
-      const API_BASE = "http://localhost:3000"
+      const API_BASE =
+        location.hostname === "localhost"
+          ? "http://localhost:3000"
+          : "https://dipedra-drive-backend.onrender.com"
 
       const grid = document.getElementById("grid")
       const count = document.getElementById("count")
