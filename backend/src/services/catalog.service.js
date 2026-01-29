@@ -58,12 +58,16 @@ async function createDbFile() {
   })
 
   await makePublic(file.data.id)
-  return { id: file.data.id, db: initialDb }
+  return { id: file.data.id, db: initialDb, exists: true }
 }
 
-export async function loadCatalogDb() {
+export async function loadCatalogDb(options = {}) {
+  const { createIfMissing = true } = options
   const existing = await findDbFile()
   if (!existing) {
+    if (!createIfMissing) {
+      return { id: null, db: buildEmptyDb(), exists: false }
+    }
     return createDbFile()
   }
 
@@ -80,7 +84,7 @@ export async function loadCatalogDb() {
     parsed = buildEmptyDb()
   }
 
-  return { id: existing.id, db: normalizeDb(parsed) }
+  return { id: existing.id, db: normalizeDb(parsed), exists: true }
 }
 
 export async function saveCatalogDb(fileId, db) {

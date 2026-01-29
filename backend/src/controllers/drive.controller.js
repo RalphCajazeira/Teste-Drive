@@ -39,8 +39,11 @@ function buildCatalogItem({ fileId, fileName, originalName, meta }) {
 }
 
 export async function apiListImages(req, res) {
-  const { id, db } = await loadCatalogDb()
-  res.json({ images: db.items || [], dbUrl: getDbPublicUrl(id) })
+  const { id, db, exists } = await loadCatalogDb({ createIfMissing: false })
+  res.json({
+    images: db.items || [],
+    dbUrl: exists ? getDbPublicUrl(id) : null,
+  })
 }
 
 export async function postUpload(req, res) {
@@ -105,7 +108,12 @@ export async function putRenameImage(req, res) {
   const { name, type, material, ambientes } = req.body || {}
 
   try {
-    const { id: dbId, db } = await loadCatalogDb()
+    const { id: dbId, db, exists } = await loadCatalogDb({
+      createIfMissing: false,
+    })
+    if (!exists) {
+      return res.status(404).send("Catálogo não encontrado.")
+    }
     const items = db.items || []
     const index = items.findIndex((item) => item.id === id)
 
@@ -140,9 +148,13 @@ export async function deleteImageById(req, res) {
 
   try {
     await deleteImage(id)
-    const { id: dbId, db } = await loadCatalogDb()
-    const nextItems = (db.items || []).filter((item) => item.id !== id)
-    await saveCatalogDb(dbId, { ...db, items: nextItems })
+    const { id: dbId, db, exists } = await loadCatalogDb({
+      createIfMissing: false,
+    })
+    if (exists) {
+      const nextItems = (db.items || []).filter((item) => item.id !== id)
+      await saveCatalogDb(dbId, { ...db, items: nextItems })
+    }
     return res.status(204).send()
   } catch (e) {
     console.error(e)
