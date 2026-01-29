@@ -98,26 +98,6 @@
         <div id="status" class="status" aria-live="polite"></div>
       </section>
 
-      <section class="card">
-        <div class="header-row">
-          <h2>Fonte do catálogo (db.json)</h2>
-          <button id="saveDbUrl" type="button" class="secondary">
-            Salvar URL
-          </button>
-        </div>
-        <p class="hint">
-          Cole a URL pública do db.json no Drive para carregar mesmo sem
-          backend.
-        </p>
-        <div class="row">
-          <input
-            id="dbUrl"
-            type="text"
-            placeholder="https://drive.google.com/uc?export=download&id=SEU_ID"
-          />
-        </div>
-      </section>
-
       <section class="grid" id="grid"></section>
     </main>
 
@@ -142,16 +122,9 @@
       const loginForm = document.getElementById("loginForm")
       const loginStatus = document.getElementById("loginStatus")
       const adminCard = document.getElementById("adminCard")
-      const dbUrlInput = document.getElementById("dbUrl")
-      const saveDbUrlBtn = document.getElementById("saveDbUrl")
-
       let PASSWORD = ""
       let isAuthenticated = false
-      let DRIVE_DB_URL = localStorage.getItem("driveDbUrl") || ""
-
-      if (dbUrlInput && DRIVE_DB_URL) {
-        dbUrlInput.value = DRIVE_DB_URL
-      }
+      const DEFAULT_DB_URL = new URL("db.json", window.location.href).toString()
 
       function getPassword() {
         return PASSWORD
@@ -391,18 +364,6 @@
       })
 
       refreshBtn.addEventListener("click", loadImages)
-      saveDbUrlBtn.addEventListener("click", () => {
-        const value = dbUrlInput.value.trim()
-        DRIVE_DB_URL = value
-        if (value) {
-          localStorage.setItem("driveDbUrl", value)
-          statusEl.textContent = "URL do db.json salva."
-        } else {
-          localStorage.removeItem("driveDbUrl")
-          statusEl.textContent = "URL do db.json removida."
-        }
-      })
-
       function resolveImageUrl(img) {
         if (img.imageUrl) return img.imageUrl
         if (img.id) return `${API_BASE}/img/${img.id}`
@@ -410,23 +371,16 @@
       }
 
       async function fetchCatalog() {
-        const sources = []
-        if (DRIVE_DB_URL) {
-          sources.push({ type: "drive", url: DRIVE_DB_URL })
-        }
-        sources.push({ type: "api", url: `${API_BASE}/api/images` })
+        const sources = [
+          { type: "local", url: DEFAULT_DB_URL },
+          { type: "api", url: `${API_BASE}/api/images` },
+        ]
 
         for (const source of sources) {
           try {
             const res = await fetch(source.url, { cache: "no-store" })
             if (!res.ok) throw new Error("Falha ao carregar catálogo")
             const data = await res.json()
-
-            if (source.type === "api" && data.dbUrl && !DRIVE_DB_URL) {
-              DRIVE_DB_URL = data.dbUrl
-              localStorage.setItem("driveDbUrl", data.dbUrl)
-              if (dbUrlInput) dbUrlInput.value = data.dbUrl
-            }
 
             return normalizeCatalogData(data)
           } catch (error) {
