@@ -3,6 +3,8 @@ import {
   listImages,
   uploadImage,
   streamImage,
+  renameImage,
+  deleteImage,
 } from "../services/drive.service.js"
 
 export async function apiListImages(req, res) {
@@ -40,5 +42,34 @@ export async function getImageProxy(req, res) {
   } catch (e) {
     console.error(e?.message || e)
     res.status(404).send("Imagem não encontrada ou sem permissão.")
+  }
+}
+
+export async function putRenameImage(req, res) {
+  const { id } = req.params
+  const { name } = req.body || {}
+
+  if (!name || typeof name !== "string") {
+    return res.status(400).send("Informe o novo nome da imagem.")
+  }
+
+  try {
+    const updated = await renameImage(id, name.trim())
+    return res.json({ image: updated })
+  } catch (e) {
+    console.error(e)
+    return res.status(500).send("Erro ao renomear imagem.")
+  }
+}
+
+export async function deleteImageById(req, res) {
+  const { id } = req.params
+
+  try {
+    await deleteImage(id)
+    return res.status(204).send()
+  } catch (e) {
+    console.error(e)
+    return res.status(500).send("Erro ao apagar imagem.")
   }
 }

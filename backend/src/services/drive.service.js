@@ -54,3 +54,21 @@ export async function streamImage(fileId) {
 
   return { meta: meta.data, stream: file.data }
 }
+
+export async function renameImage(fileId, name) {
+  const updated = await drive.files.update({
+    fileId,
+    requestBody: { name },
+    fields: "id,name",
+    supportsAllDrives: true,
+  })
+
+  return { id: updated.data.id, name: updated.data.name }
+}
+
+export async function deleteImage(fileId) {
+  await drive.files.delete({
+    fileId,
+    supportsAllDrives: true,
+  })
+}
