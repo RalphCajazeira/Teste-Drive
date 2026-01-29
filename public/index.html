@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Catálogo - Upload Drive</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <h1>Upload para o Google Drive (pasta do catálogo)</h1>
+        <p class="hint">
+          Envie uma imagem. Ela será enviada para o Drive e marcada como
+          pública.
+        </p>
+
+        <form
+          class="row"
+          action="/upload"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <input id="file" type="file" name="image" accept="image/*" required />
+          <button type="submit">Enviar</button>
+        </form>
+
+        <div id="status" class="status" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <div class="header-row">
+          <h2>Imagens na pasta</h2>
+          <button id="refresh" type="button" class="secondary">
+            Recarregar
+          </button>
+        </div>
+        <p class="hint" id="count">Carregando...</p>
+      </section>
+
+      <section class="grid" id="grid"></section>
+    </main>
+
+    <script>
+      const grid = document.getElementById("grid")
+      const count = document.getElementById("count")
+      const refreshBtn = document.getElementById("refresh")
+      const statusEl = document.getElementById("status")
+
+      async function loadImages() {
+        statusEl.textContent = ""
+        grid.innerHTML = ""
+        count.textContent = "Carregando..."
+
+        try {
+          const res = await fetch("/api/images", { cache: "no-store" })
+          const data = await res.json()
+
+          const images = data.images || []
+          count.textContent = `Mostrando ${images.length} imagem(ns).`
+
+          for (const img of images) {
+            const card = document.createElement("div")
+            card.className = "imgcard"
+
+            // O segredo: <img> aponta para o backend, que faz proxy do Drive
+            const imageEl = document.createElement("img")
+            imageEl.src = `/img/${img.id}`
+            imageEl.alt = img.name
+
+            const meta = document.createElement("div")
+            meta.className = "meta"
+
+            const title = document.createElement("div")
+            title.className = "name"
+            title.textContent = img.name
+
+            const links = document.createElement("div")
+            links.className = "links"
+            links.innerHTML = `
+            <a href="${img.driveView}" target="_blank" rel="noreferrer">Abrir no Drive</a>
+            <span class="sep">•</span>
+            <span class="small">fileId: ${img.id}</span>
+          `
+
+            meta.appendChild(title)
+            meta.appendChild(links)
+
+            card.appendChild(imageEl)
+            card.appendChild(meta)
+
+            grid.appendChild(card)
+          }
+        } catch (e) {
+          console.error(e)
+          count.textContent = "Erro ao carregar imagens."
+          statusEl.textContent =
+            "Falha ao listar imagens do Drive. Veja o console."
+        }
+      }
+
+      refreshBtn.addEventListener("click", loadImages)
+      loadImages()
+    </script>
+  </body>
+</html>
