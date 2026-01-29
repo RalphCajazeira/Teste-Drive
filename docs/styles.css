@@ -159,6 +159,7 @@ button.secondary {
   object-fit: cover;
   display: block;
   background: #0e0e12;
+  cursor: pointer;
 }
 .meta {
   padding: 10px;
@@ -200,4 +201,70 @@ a:hover {
 .small {
   color: #b6b6c4;
   word-break: break-all;
+}
+
+.modal-open {
+  overflow: hidden;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.modal-content {
+  position: relative;
+  z-index: 1;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.modal-content img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: #0e0e12;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 15, 18, 0.8);
+}
+
+.modal-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 15, 18, 0.7);
+}
+
+.modal-nav.prev {
+  left: 12px;
+}
+
+.modal-nav.next {
+  right: 12px;
+}
+
+.modal-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
